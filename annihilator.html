@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Аннигилятор — модель 1.1</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #000;
+      color: #aaa;
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      font-weight: 300;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 3rem 1.5rem 4rem;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .epigraph {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .epigraph p {
+      font-size: 13px;
+      font-weight: 300;
+      line-height: 1.85;
+      color: #3e3e3e;
+    }
+
+    .divider {
+      height: 0.5px;
+      background: #1a1a1a;
+    }
+
+    .device {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .device-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .dot-logo {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #fff;
+      flex-shrink: 0;
+    }
+    .device-title {
+      font-size: 14px;
+      font-weight: 300;
+      color: #ddd;
+      letter-spacing: 0.04em;
+    }
+    .device-model {
+      font-size: 11px;
+      font-weight: 300;
+      color: #2a2a2a;
+      margin-left: auto;
+      letter-spacing: 0.08em;
+    }
+
+    .input-label {
+      font-size: 11px;
+      font-weight: 300;
+      color: #3a3a3a;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: none;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 300;
+      line-height: 1.7;
+      color: #bbb;
+      background: #0d0d0d;
+      border: 1px solid #252525;
+      border-radius: 3px;
+      padding: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: #404040; }
+    textarea::placeholder { color: #222; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      height: 48px;
+      border: 1px solid #888;
+      border-radius: 3px;
+      background: #111;
+      color: #999;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 300;
+      letter-spacing: 0.14em;
+      cursor: pointer;
+      text-align: center;
+      line-height: 48px;
+      user-select: none;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .btn:hover {
+      border-color: #ccc;
+      color: #ddd;
+      background: #1a1a1a;
+    }
+    .btn.disabled {
+      border-color: #1e1e1e;
+      color: #2a2a2a;
+      background: #000;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    #canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="page">
+
+  <div class="epigraph">
+    <p>Аннигиля́ция (лат. annihilatio — «полное уничтожение; отмена») — реакция превращения частицы и античастицы при их столкновении в какие-либо иные частицы, отличные от исходных.</p>
+    <p>В психологии это понятие метафорически описывает радикальную трансформацию личности, которая происходит в момент столкновения двух конфликтующих внутренних реальностей.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="device">
+    <div class="device-header">
+      <div class="dot-logo"></div>
+      <div class="device-title">Аннигилятор</div>
+      <div class="device-model">модель 1.1</div>
+    </div>
+
+    <div>
+      <div class="input-label">Что хотите аннигилировать</div>
+      <textarea id="inputText" placeholder="..."></textarea>
+    </div>
+
+    <div class="btn" id="annBtn" role="button" tabindex="0">аннигилировать</div>
+  </div>
+
+</div>
+
+<script>
+  /* ─────────────────────────────────────────
+     Вставьте URL вашего Apps Script сюда:
+  ───────────────────────────────────────── */
+  const SHEET_URL = 'ВСТАВЬТЕ_СЮДА_URL_APPS_SCRIPT';
+
+  /* ── Particles ── */
+  const canvas  = document.getElementById('canvas');
+  const ctx     = canvas.getContext('2d');
+  let particles = [];
+  let animId    = null;
+  let counter   = 0;
+  const DURATION = 10000;
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function spawnParticles() {
+    resize();
+    particles = [];
+    const cx  = canvas.width  / 2;
+    const cy  = canvas.height / 2;
+    const now = performance.now();
+    for (let i = 0; i < 160; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.4 + Math.random() * 2.2;
+      const gray  = Math.floor(100 + Math.random() * 155);
+      particles.push({
+        x: cx + (Math.random() - 0.5) * 60,
+        y: cy + (Math.random() - 0.5) * 60,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 0.3,
+        gravity: 0.008 + Math.random() * 0.012,
+        size: 0.8 + Math.random() * 2,
+        color: `rgb(${gray},${gray},${gray})`,
+        born: now,
+        life: DURATION * (0.7 + Math.random() * 0.3)
+      });
+    }
+  }
+
+  function animate(ts) {
+    ctx.fillStyle = 'rgba(0,0,0,0.04)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    for (const p of particles) {
+      const age = ts - p.born;
+      if (age > p.life) continue;
+      alive = true;
+      p.vy += p.gravity;
+      p.vx *= 0.995;
+      p.x  += p.vx;
+      p.y  += p.vy;
+      const progress = age / p.life;
+      const alpha = progress < 0.15
+        ? progress / 0.15
+        : 1 - Math.pow((progress - 0.15) / 0.85, 1.4);
+      ctx.globalAlpha = Math.max(0, alpha) * 0.85;
+      ctx.fillStyle   = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (alive) {
+      animId = requestAnimationFrame(animate);
+    } else {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      setTimeout(() => {
+        canvas.style.display = 'none';
+        btn.classList.remove('disabled');
+        btn.setAttribute('tabindex', '0');
+      }, 400);
+    }
+  }
+
+  /* ── Google Sheets ── */
+  async function sendToSheet(num, text) {
+    if (!SHEET_URL || SHEET_URL.startsWith('ВСТАВЬТЕ')) return;
+    const now = new Date();
+    const datetime = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU');
+    try {
+      await fetch(SHEET_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ num, datetime, text })
+      });
+    } catch (e) {
+      console.warn('Sheet error:', e);
+    }
+  }
+
+  /* ── Action ── */
+  const btn = document.getElementById('annBtn');
+
+  function annihilate() {
+    if (btn.classList.contains('disabled')) return;
+    const input = document.getElementById('inputText');
+    const text  = input.value.trim();
+    if (!text) { input.focus(); return; }
+
+    counter++;
+    btn.classList.add('disabled');
+    btn.setAttribute('tabindex', '-1');
+
+    sendToSheet(counter, text);
+    input.value = '';
+
+    canvas.style.display = 'block';
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    spawnParticles();
+    if (animId) cancelAnimationFrame(animId);
+    animId = requestAnimationFrame(animate);
+  }
+
+  btn.addEventListener('click', annihilate);
+  btn.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') annihilate();
+  });
+  document.getElementById('inputText').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) annihilate();
+  });
+</script>
+
+<!--
+═══════════════════════════════════════════════════════
+  ШАГ 1 — Подключить Google Sheets
+═══════════════════════════════════════════════════════
+
+  1. Создайте новую Google таблицу.
+     Переименуйте первый лист в «Данные».
+     Добавьте заголовки в первую строку:
+       A1: №     B1: Дата и время     C1: Текст
+
+  2. Расширения → Apps Script.
+     Удалите всё содержимое и вставьте код ниже:
+
+  ───────────────────────────────────────────────────
+  function doPost(e) {
+    var data  = JSON.parse(e.postData.contents);
+    var sheet = SpreadsheetApp.getActiveSpreadsheet()
+                  .getSheetByName('Данные');
+    sheet.appendRow([data.num, data.datetime, data.text]);
+    return ContentService
+      .createTextOutput('ok')
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
+  ───────────────────────────────────────────────────
+
+  3. Нажмите «Развернуть» → «Новое развёртывание»:
+       Тип: Веб-приложение
+       Выполнять как: Я
+       Доступ: Все
+     Нажмите «Развернуть» и скопируйте URL.
+
+  4. В этом файле найдите строку:
+       const SHEET_URL = 'ВСТАВЬТЕ_СЮДА_URL_APPS_SCRIPT';
+     Замените текст в кавычках на скопированный URL.
+     Сохраните файл.
+
+═══════════════════════════════════════════════════════
+  ШАГ 2 — Разместить страницу в интернете
+═══════════════════════════════════════════════════════
+
+  Netlify (проще всего, бесплатно):
+  1. Зайдите на netlify.com
+  2. Перетащите этот HTML-файл прямо в браузер
+  3. Получите готовую ссылку за 30 секунд
+
+  GitHub Pages:
+  1. Создайте репозиторий на github.com
+  2. Загрузите файл как index.html
+  3. Settings → Pages → Source: main / root
+  4. Адрес: https://ВАШ_НИК.github.io/ИМЯ_РЕПО
+
+═══════════════════════════════════════════════════════
+-->
+
+</body>
+</html>
